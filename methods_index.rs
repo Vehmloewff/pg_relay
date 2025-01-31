@@ -2,7 +2,7 @@ use anyhow::{anyhow, Result};
 use dashmap::DashMap;
 use deadpool_postgres::{Client, GenericClient};
 use serde_json::{json, Map, Value};
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 
 use crate::{config::Config, method::Method};
 
@@ -14,7 +14,7 @@ struct Info {
 
 pub struct MethodsIndex {
 	info: Mutex<Info>,
-	map: DashMap<String, Method>,
+	map: DashMap<String, Arc<Method>>,
 }
 
 impl MethodsIndex {
@@ -41,6 +41,10 @@ impl MethodsIndex {
 		Ok(())
 	}
 
+	pub fn get_count(&self) -> usize {
+		self.map.len()
+	}
+
 	pub fn get_schema(&self) -> Value {
 		let mut endpoints = Map::new();
 
@@ -58,9 +62,15 @@ impl MethodsIndex {
 			"paths": endpoints,
 		})
 	}
+
+	pub fn get_method(&self, path: &str) -> Result<Arc<Method>> {
+		let method = self.map.get(path).ok_or(anyhow!("method does not exist"))?;
+
+		Ok(method.clone())
+	}
 }
 
-pub async fn fetch_methods(db_client: &Client, query: &str) -> Result<Vec<(String, Method)>> {
+pub async fn fetch_methods(db_client: &Client, query: &str) -> Result<Vec<(String, Arc<Method>)>> {
 	db_client
 		.query(query, &[])
 		.await?
@@ -89,7 +99,7 @@ pub async fn fetch_methods(db_client: &Client, query: &str) -> Result<Vec<(Strin
 				response.ok_or(anyhow!("response column was not returned from methdos query"))?,
 			)?;
 
-			Ok((path, method))
+			Ok((path, Arc::new(method)))
 		})
 		.collect()
 }
