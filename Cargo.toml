@@ -1,23 +1,25 @@
 [package]
-name = "method_server"
+name = "pg_relay"
 version = "0.1.0"
 edition = "2021"
 
 [[bin]]
-name = "method_server"
+name = "pg_relay"
 path = "main.rs"
 
 [dependencies]
 anyhow = "1.0.95"
+dashmap = "6.1.0"
 deadpool-postgres = "0.14.1"
 env_logger = "0.11.6"
 http-body-util = "0.1.2"
 hyper = "1.6.0"
 hyper-util = { version = "0.1.10", features = ["full"] }
+jsonschema = "0.28.3"
 log = "0.4.25"
 openssl = "0.10.69"
 postgres-openssl = "0.5.0"
 serde = { version = "1.0.217", features = ["derive"] }
 serde_json = "1.0.138"
 tokio = { version = "1.43.0", features = ["full"] }
-tokio-postgres = "0.7.12"
+tokio-postgres = { version = "0.7.12", features = ["with-serde_json-1"] }

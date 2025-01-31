@@ -1,3 +1,6 @@
+mod config;
+mod method;
+mod methods_index;
 mod service;
 
 use anyhow::{bail, Context, Result};
