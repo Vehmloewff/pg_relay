@@ -7,19 +7,19 @@ use hyper::{
 };
 use serde_json::{from_slice, json, to_string, Value};
 
-use crate::{config::Config, methods_index::MethodsIndex};
+use crate::{config::Config, endpoint_index::EndpointIndex};
 
 pub struct ServiceParams<'a> {
 	pub pool: &'a Pool,
-	pub methods_index: &'a MethodsIndex,
+	pub endpoint_index: &'a EndpointIndex,
 	pub config: &'a Config,
 	pub request: Request<Incoming>,
 }
 
 pub async fn service(params: ServiceParams<'_>) -> Result<Response<Full<Bytes>>> {
 	let response_json = match (params.request.method(), params.request.uri().path()) {
-		(&Method::GET, "/") => params.methods_index.get_schema(),
-		(&Method::DELETE, "/methods") => {
+		(&Method::GET, "/") => params.endpoint_index.get_schema(),
+		(&Method::DELETE, "/cache") => {
 			if let Some(requested_token) = params.config.admin_token.as_ref() {
 				let token_raw = params
 					.request
@@ -34,22 +34,22 @@ pub async fn service(params: ServiceParams<'_>) -> Result<Response<Full<Bytes>>>
 				}
 			}
 
-			let old_method_count = params.methods_index.get_count();
-			params.methods_index.refresh(&params.pool.get().await?, params.config).await?;
-			let new_method_count = params.methods_index.get_count();
+			let old_endpoint_count = params.endpoint_index.get_count();
+			params.endpoint_index.refresh(&params.pool.get().await?, params.config).await?;
+			let new_endpoint_count = params.endpoint_index.get_count();
 
 			json!({
-				"old_method_count": old_method_count,
-				"new_method_count": new_method_count,
+				"old_endpoint_count": old_endpoint_count,
+				"new_endpoint_count": new_endpoint_count,
 			})
 		}
 		(&Method::POST, path) => {
-			let method = params.methods_index.get_method(path)?;
+			let endpoint = params.endpoint_index.get_endpoint(path)?;
 			let db_pool = params.pool.get().await?;
 			let whole_request = params.request.into_body().collect().await?.to_bytes();
 			let request_data = from_slice::<Value>(&whole_request)?;
 
-			method.run(&db_pool, &request_data).await?
+			endpoint.run(&db_pool, &request_data).await?
 		}
 		(_, _) => bail!("endpoint does not exist"),
 	};

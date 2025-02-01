@@ -6,9 +6,16 @@ use toml::from_str;
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Config {
 	pub port: u16,
+	#[serde(rename = "db-url")]
 	pub db_url: String,
+
+	#[serde(rename = "info-query")]
 	pub info_query: String,
-	pub methods_query: String,
+
+	#[serde(rename = "endpoints-query")]
+	pub endpoints_query: String,
+
+	#[serde(rename = "admin-token")]
 	pub admin_token: Option<String>,
 }
 

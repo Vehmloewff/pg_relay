@@ -3,16 +3,16 @@ use deadpool_postgres::{Client, GenericClient};
 use jsonschema::{validator_for, Validator};
 use serde_json::{json, Value};
 
-pub struct Method {
+pub struct Endpoint {
 	request_validator: Validator,
 	query: String,
 	request_schema: Value,
 	response_schema: Value,
 }
 
-impl Method {
-	pub fn from_config(fn_name: String, request: Value, response: Value) -> Result<Method> {
-		Ok(Method {
+impl Endpoint {
+	pub fn from_config(fn_name: String, request: Value, response: Value) -> Result<Endpoint> {
+		Ok(Endpoint {
 			request_validator: validator_for(&request)?,
 			request_schema: request,
 			response_schema: response,

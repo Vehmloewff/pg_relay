@@ -19,13 +19,17 @@ pg_relay is configured via a `pg_relay.toml` file. The following options are ava
 port = 8080
 db-url = "postgres://user:password@localhost/dbname"
 
-# The query that will be used to retrieve API metadata from the database. This information is displayed in the open api schema. The order of the columns returned does not matter.
+# The query that will be used to retrieve API metadata from the database. This
+# information is displayed in the open api schema. The order of the columns does
+# not matter.
 info-query = "SELECT title, description, version FROM api_info"
 
-# The query that will be used to load the API endpoints. There is more information about this below. The order of the columns returned does not matter.
+# The query that will be used to load the API endpoints. The order of the columns
+# does not matter. More on this in the "Endpoints Options" section. 
 endpoints-query = "SELECT path, fn_name, request, response FROM api_endpoints"
 
-# The optional (but recommended) token, required for flushing the cache. More on this later.
+# The optional (but recommended) token, required for flushing the cache. More on
+# this in the "Flushing Cache" section.
 admin-token = "supersecret"
 ```
 
@@ -35,14 +39,14 @@ Currently, all database connections are made with TLS. Ideally, to use TLS or no
 
 Each column in the endpoints query is considered an "endpoint option". All options are required.
 
-- `path` - the path that the method is to be exposed at. Can contain slashes.
-- `fn_name` - the postgres function name to call when this endpoint is hit. One argument will be passed into this function, of type `jsonb`. The contents of this argument will be the request body, and it is guaranteed to match the request schema.
+- `path` - the path that the endpoint is to be exposed at. Can contain slashes.
+- `fn_name` - the postgres function name to call when this endpoint is hit. One argument will be passed into this function, of type `jsonb`. The contents of this argument will be the request body, and it is endpoint guaranteed to match the request schema.
 - `request` - the request schema. Must be json of some sort, and must be a valid json schema.
 - `response` - the response schema. Currently this is not used for any purpose other than being displaying in the open api schema.
 
 ### Database Setup
 
-To use pg_relay, your PostgreSQL database should have tables that store API metadata and method definitions. Here’s an example schema:
+To use pg_relay, your PostgreSQL database should have tables that store API metadata and endpoint definitions. Here’s an example schema:
 
 ```sql
 CREATE TABLE api_info (
@@ -75,7 +79,7 @@ $$ LANGUAGE plpgsql;
 
 INSERT INTO api_endpoints (path, fn_name, request, response)
 VALUES (
-  '/example_method',
+  '/example',
   'example_function',
   '{
     "type": "object",
@@ -152,7 +156,7 @@ Once configured and running, pg_relay exposes http endpoints for your functions.
 
 Example:
 ```sh
-curl -X POST http://localhost:8080/example_method -H "Content-Type: application/json" -d '{"param": "World"}'
+curl -X POST http://localhost:8080/example -H "Content-Type: application/json" -d '{"param": "World"}'
 ```
 
 Response:
@@ -186,7 +190,7 @@ This will return a JSON representation of the OpenAPI spec, including all availa
 
 Currently, all error messages are piped directly to the client as a json `{ "error": "..." }` response, so there is a lot of room for improvement here. Pull requests are welcome!
 
-## Flushing API endpoints
+## Flushing Cache
 
 The list of api endpoints and meta information is loaded when the server starts up. However, after deploying changes to your database, you'll likely want to refresh this cache. This can be done by sending a `DELETE` request to `/cache`.
 

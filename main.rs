@@ -1,16 +1,16 @@
 mod config;
-mod method;
-mod methods_index;
+mod endpoint;
+mod endpoint_index;
 mod service;
 
 use anyhow::{Context, Result};
 use config::Config;
 use deadpool_postgres::Pool;
+use endpoint_index::EndpointIndex;
 use http_body_util::Full;
 use hyper::{body::Bytes, server::conn::http1, service::service_fn, Response};
 use hyper_util::rt::TokioIo;
 use log::{error, info, warn, LevelFilter};
-use methods_index::MethodsIndex;
 use openssl::ssl::{SslConnector, SslMethod, SslVerifyMode};
 use postgres_openssl::MakeTlsConnector;
 use serde_json::{json, to_string};
@@ -33,7 +33,7 @@ async fn main_impl() -> Result<()> {
 	// They will be needed for the rest of the program
 	let config = leak(Config::load().await?);
 	let pool = leak(get_db_pool(&config.db_url).await?);
-	let methods_index = leak(MethodsIndex::fetch(&pool.get().await?, &config).await?);
+	let methods_index = leak(EndpointIndex::fetch(&pool.get().await?, &config).await?);
 
 	let addr = SocketAddr::from(([127, 0, 0, 1], config.port));
 	let listener = TcpListener::bind(addr).await?;
@@ -60,12 +60,13 @@ async fn main_impl() -> Result<()> {
 							Err(err) => {
 								warn!("service has thrown an error, giving 400: {err:?}");
 
+								// we will always be able to serialize this, hence the unwrap
 								let text = to_string(&json!({
 									"error": err.to_string()
 								}))
-								// we will always be able to serialize this
 								.unwrap();
 
+								// we have configured the builder correctly, we we won't panic
 								let response = Response::builder()
 									.status(400)
 									.header("content-type", "application/json")
@@ -81,7 +82,7 @@ async fn main_impl() -> Result<()> {
 				)
 				.await
 			{
-				error!("failed to server connection: {err:?}");
+				error!("failed to serve connection: {err:?}");
 			}
 		});
 	}

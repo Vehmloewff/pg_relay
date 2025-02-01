@@ -4,38 +4,39 @@ use deadpool_postgres::{Client, GenericClient};
 use serde_json::{json, Map, Value};
 use std::sync::{Arc, Mutex};
 
-use crate::{config::Config, method::Method};
+use crate::{config::Config, endpoint::Endpoint};
 
+#[derive(Debug, Clone)]
 struct Info {
 	title: String,
 	description: String,
 	version: String,
 }
 
-pub struct MethodsIndex {
+pub struct EndpointIndex {
 	info: Mutex<Info>,
-	map: DashMap<String, Arc<Method>>,
+	map: DashMap<String, Arc<Endpoint>>,
 }
 
-impl MethodsIndex {
-	pub async fn fetch(db_client: &Client, config: &Config) -> Result<MethodsIndex> {
+impl EndpointIndex {
+	pub async fn fetch(db_client: &Client, config: &Config) -> Result<EndpointIndex> {
 		let info = fetch_info(db_client, &config.info_query).await?;
-		let methods = fetch_methods(db_client, &config.methods_query).await?;
+		let endpoints = fetch_endpoints(db_client, &config.endpoints_query).await?;
 
-		Ok(MethodsIndex {
+		Ok(EndpointIndex {
 			info: Mutex::new(info),
-			map: DashMap::from_iter(methods),
+			map: DashMap::from_iter(endpoints),
 		})
 	}
 
 	pub async fn refresh(&self, db_client: &Client, config: &Config) -> Result<()> {
 		*self.info.lock().unwrap() = fetch_info(db_client, &config.info_query).await?;
 
-		let methods = fetch_methods(db_client, &config.methods_query).await?;
+		let endpoints = fetch_endpoints(db_client, &config.endpoints_query).await?;
 		self.map.retain(|_, _| false);
 
-		for (path, method) in methods {
-			self.map.insert(path, method);
+		for (path, endpoint) in endpoints {
+			self.map.insert(path, endpoint);
 		}
 
 		Ok(())
@@ -48,29 +49,35 @@ impl MethodsIndex {
 	pub fn get_schema(&self) -> Value {
 		let mut endpoints = Map::new();
 
-		for item in self.map.iter() {
-			endpoints.insert(item.key().clone(), item.value().get_schema());
+		// drop as soon as we're done
+		{
+			for item in self.map.iter() {
+				endpoints.insert(item.key().clone(), item.value().get_schema());
+			}
 		}
+
+		// we want to drop the mutex as early as possible
+		let info = { self.info.lock().unwrap().clone() };
 
 		json!({
 			"openapi": "3.1.0",
 			"info": {
-				"title": "no title",
-				"description": "also, not description",
-				"version": "0.1.0"
+				"title": info.title,
+				"description": info.description,
+				"version": info.version,
 			},
 			"paths": endpoints,
 		})
 	}
 
-	pub fn get_method(&self, path: &str) -> Result<Arc<Method>> {
-		let method = self.map.get(path).ok_or(anyhow!("method does not exist"))?;
+	pub fn get_endpoint(&self, path: &str) -> Result<Arc<Endpoint>> {
+		let endpoint = self.map.get(path).ok_or(anyhow!("endpoint does not exist"))?;
 
-		Ok(method.clone())
+		Ok(endpoint.clone())
 	}
 }
 
-pub async fn fetch_methods(db_client: &Client, query: &str) -> Result<Vec<(String, Arc<Method>)>> {
+async fn fetch_endpoints(db_client: &Client, query: &str) -> Result<Vec<(String, Arc<Endpoint>)>> {
 	db_client
 		.query(query, &[])
 		.await?
@@ -91,20 +98,20 @@ pub async fn fetch_methods(db_client: &Client, query: &str) -> Result<Vec<(Strin
 				}
 			}
 
-			let path = path.ok_or(anyhow!("path column was not returned from methods query"))?;
+			let path = path.ok_or(anyhow!("path column was not returned from endpoints query"))?;
 
-			let method = Method::from_config(
-				fn_name.ok_or(anyhow!("fn_name column was not returned from methods query"))?,
-				request.ok_or(anyhow!("request column was not returned from methods query"))?,
-				response.ok_or(anyhow!("response column was not returned from methdos query"))?,
+			let endpoint = Endpoint::from_config(
+				fn_name.ok_or(anyhow!("fn_name column was not returned from endpoints query"))?,
+				request.ok_or(anyhow!("request column was not returned from endpoints query"))?,
+				response.ok_or(anyhow!("response column was not returned from endpoints query"))?,
 			)?;
 
-			Ok((path, Arc::new(method)))
+			Ok((path, Arc::new(endpoint)))
 		})
 		.collect()
 }
 
-pub async fn fetch_info(db_client: &Client, query: &str) -> Result<Info> {
+async fn fetch_info(db_client: &Client, query: &str) -> Result<Info> {
 	let row = db_client.query_one(query, &[]).await?;
 	let mut title = None;
 	let mut description = None;
