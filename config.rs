@@ -15,8 +15,8 @@ pub struct Config {
 	#[serde(rename = "endpoints-query")]
 	pub endpoints_query: String,
 
-	#[serde(rename = "admin-token")]
-	pub admin_token: Option<String>,
+	#[serde(rename = "admin-key")]
+	pub admin_key: Option<String>,
 }
 
 impl Config {

@@ -20,11 +20,11 @@ pub async fn service(params: ServiceParams<'_>) -> Result<Response<Full<Bytes>>>
 	let response_json = match (params.request.method(), params.request.uri().path()) {
 		(&Method::GET, "/") => params.endpoint_index.get_schema(),
 		(&Method::DELETE, "/cache") => {
-			if let Some(requested_token) = params.config.admin_token.as_ref() {
+			if let Some(requested_token) = params.config.admin_key.as_ref() {
 				let token_raw = params
 					.request
 					.headers()
-					.get("admin-token")
+					.get("admin-key")
 					.ok_or(anyhow!("expected an admin-token header"))?;
 
 				let token = token_raw.to_str().context("admin-token is not a valid string")?;

@@ -33,7 +33,7 @@ async fn main_impl() -> Result<()> {
 	// They will be needed for the rest of the program
 	let config = leak(Config::load().await?);
 	let pool = leak(get_db_pool(&config.db_url).await?);
-	let methods_index = leak(EndpointIndex::fetch(&pool.get().await?, &config).await?);
+	let endpoint_index = leak(EndpointIndex::fetch(&pool.get().await?, &config).await?);
 
 	let addr = SocketAddr::from(([127, 0, 0, 1], config.port));
 	let listener = TcpListener::bind(addr).await?;
@@ -50,7 +50,7 @@ async fn main_impl() -> Result<()> {
 					service_fn(move |request| async {
 						let params = ServiceParams {
 							pool,
-							methods_index,
+							endpoint_index,
 							config,
 							request,
 						};

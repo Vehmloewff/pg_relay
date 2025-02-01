@@ -11,6 +11,17 @@
 - **Simple configuration** via a TOML file
 - **Exposes an OpenAPI specification** for automatic documentation of your API
 
+## Installation
+
+Currently, you'll have to build and install from source.
+
+```shell
+git clone git@github.com:Vehmloewff/pg_relay.git
+cd pg_relay
+cargo build --release
+sudo cp target/release/pg_relay /usr/local/bin/pg_relay
+```
+
 ## Configuration
 
 pg_relay is configured via a `pg_relay.toml` file. The following options are available:
@@ -198,7 +209,7 @@ The list of api endpoints and meta information is loaded when the server starts 
 curl -X DELETE http://localhost:8080/cache -H "admin-token: supersecret"
 ```
 
-This reloads API endpoints and metadata from the database. If `admin_token` is configured, the request must include a matching `admin-token` header.
+This reloads API endpoints and metadata from the database. If `admin-key` is configured, the request must include a matching `admin-key` header.
 
 ## License
 
