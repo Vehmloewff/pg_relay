@@ -83,7 +83,7 @@ async fn fetch_endpoints(db_client: &Client, query: &str) -> Result<Vec<(String,
 		.await?
 		.drain(..)
 		.map(|row| {
-			let mut path = None;
+			let mut path = None::<String>;
 			let mut fn_name = None;
 			let mut request = None;
 			let mut response = None;
@@ -99,6 +99,7 @@ async fn fetch_endpoints(db_client: &Client, query: &str) -> Result<Vec<(String,
 			}
 
 			let path = path.ok_or(anyhow!("path column was not returned from endpoints query"))?;
+			let path = if path.starts_with("/") { path[1..].to_string() } else { path };
 
 			let endpoint = Endpoint::from_config(
 				fn_name.ok_or(anyhow!("fn_name column was not returned from endpoints query"))?,

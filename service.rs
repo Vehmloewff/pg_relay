@@ -44,7 +44,7 @@ pub async fn service(params: ServiceParams<'_>) -> Result<Response<Full<Bytes>>>
 			})
 		}
 		(&Method::POST, path) => {
-			let endpoint = params.endpoint_index.get_endpoint(path)?;
+			let endpoint = params.endpoint_index.get_endpoint(&path[1..])?; // trim the leading slash
 			let db_pool = params.pool.get().await?;
 			let whole_request = params.request.into_body().collect().await?.to_bytes();
 			let request_data = from_slice::<Value>(&whole_request)?;
