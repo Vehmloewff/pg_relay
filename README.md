@@ -130,7 +130,7 @@ DECLARE
 BEGIN
     SELECT * INTO user_record FROM users WHERE users.email = get_user.email;
     IF NOT FOUND THEN
-        RETURN jsonb_build_object('error', 'User not found');
+        RAISE EXCEPTION 'User does not exist';
     END IF;
     RETURN jsonb_build_object(
       'id', user_record.id,
